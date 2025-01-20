@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authAPI, LoginData } from "../api";
+import { useUser } from "../context/UserContext";
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState<LoginData>({
@@ -10,6 +11,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
+  const { setUserName } = useUser();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -20,6 +22,7 @@ const Login: React.FC = () => {
       const response = await authAPI.login(formData);
 
       if (response.ok) {
+        setUserName(formData.name); // Save user name to context
         navigate("/search");
       } else {
         const errorData = await response.json().catch(() => null);

@@ -23,5 +23,11 @@ export const authAPI = {
     console.log('Login response headers:', response.headers);
 
     return response;
+  },
+  logout: async (): Promise<Response> => {
+    return fetch(`${API_BASE_URL}/auth/logout`, {
+      ...defaultConfig,
+      method: 'POST',
+    });
   }
 };
