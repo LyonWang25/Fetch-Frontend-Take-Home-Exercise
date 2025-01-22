@@ -13,6 +13,7 @@ export const locationsAPI = {
 
   // Search locations with filters
   searchLocations: async (params: LocationSearchParams): Promise<LocationSearchResponse> => {
+    // console.log("searchLocations called with params:", params); 
     const response = await fetch(`${API_BASE_URL}/locations/search`, {
       ...defaultConfig,
       method: 'POST',
@@ -24,6 +25,8 @@ export const locationsAPI = {
         ...(params.from && { from: params.from }),
       }),
     });
-    return response.json();
+    const data = await response.json();
+    // console.log("searchLocations response:", data);
+    return data;
   },
 };

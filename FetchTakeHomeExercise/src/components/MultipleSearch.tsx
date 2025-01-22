@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { US_STATES } from "../constants";
 import { Search as SearchIcon } from "lucide-react";
+import { locationsAPI } from "../api";
+import { debounce } from "../util"
 interface SearchOption {
-  category: "breed" | "state" | "zipCode" | "age";
+  category: "breed" | "state" | "zipCode" | "age" | "city";
   value: string;
   label: string;
 }
@@ -10,17 +12,60 @@ interface SearchOption {
 interface MultipleSearchProps {
   breeds: string[];
   onSearch: (options: SearchOption[]) => void;
+  resetTrigger?: boolean;
 }
 
 const MultipleSearch: React.FC<MultipleSearchProps> = ({
   breeds,
   onSearch,
+  resetTrigger,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedOptions, setSelectedOptions] = useState<SearchOption[]>([]);
   const [suggestions, setSuggestions] = useState<SearchOption[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  const searchCities = useCallback(
+    debounce(async (term: string) => {
+      if (term.length < 2) return;
+      // console.log("searchCities called with term:", term); 
+      try {
+        const response = await locationsAPI.searchLocations({
+          city: term,
+          size: 10,
+        });
+        // console.log("searchCities API response:", response); 
+
+        // Create a Set to store unique city-state combinations
+        const uniqueCities = new Set();
+        const cityOptions: SearchOption[] = [];
+
+        response.results.forEach((loc) => {
+          // console.log("Processing location result:", loc); 
+          const cityState = `${loc.city}, ${loc.state}`;
+          if (!uniqueCities.has(cityState)) {
+            uniqueCities.add(cityState);
+            cityOptions.push({
+              category: "city",
+              value: JSON.stringify({
+                city: loc.city,
+                state: loc.state,
+              }),
+              label: cityState,
+            });
+          }
+        });
+        // console.log("City suggestions generated:", cityOptions); 
+        setSuggestions((prev) => {
+          const nonCityOptions = prev.filter((opt) => opt.category !== "city");
+          return [...nonCityOptions, ...cityOptions];
+        });
+      } catch (error) {
+        console.error("Error searching cities:", error);
+      }
+    }, 300),
+    []
+  );
 
   const updateSuggestions = useCallback(() => {
     if (searchTerm.length < 1) {
@@ -71,30 +116,69 @@ const MultipleSearch: React.FC<MultipleSearchProps> = ({
       });
     }
 
-    setSuggestions(newSuggestions);
+    setSuggestions((prev) => {
+      const cityOptions = prev.filter((opt) => opt.category === "city");
+      return [...newSuggestions, ...cityOptions];
+    });
   }, [searchTerm, breeds]);
 
   useEffect(() => {
+    if (searchTerm.length >= 2 && !searchTerm.match(/^\d/)) {
+      searchCities(searchTerm);
+    }
     updateSuggestions();
-  }, [searchTerm, updateSuggestions]);
+    setShowSuggestions(true); // Always show suggestions when typing
+
+    return () => {
+      searchCities.cancel?.();
+    };
+  }, [searchTerm, updateSuggestions, searchCities]);
 
   const handleSelect = useCallback(
     (option: SearchOption) => {
-      setSelectedOptions((prev) => {
-        // Don't add duplicate options
-        if (
-          prev.some(
-            (selected) =>
-              selected.category === option.category &&
-              selected.value === option.value
-          )
-        ) {
-          return prev;
+      // console.log("Option selected:", option); 
+      if (option.category === "city") {
+        try {
+          const cityData = JSON.parse(option.value);
+          // console.log("Parsed city data:", cityData); 
+          const newOption = {
+            category: "city",
+            value: JSON.stringify({
+              city: cityData.city,
+              state: cityData.state,
+            }),
+            label: `${cityData.city}, ${cityData.state}`,
+          };
+
+          setSelectedOptions((prev) => {
+            const filteredOptions = prev.filter(
+              (opt) => opt.category !== "city"
+            );
+            const newOptions = [...filteredOptions, newOption];
+            // console.log("Updated selected options:", newOptions);
+            onSearch(newOptions);
+            return newOptions;
+          });
+        } catch (error) {
+          console.error("Error parsing city data:", error);
         }
-        const newOptions = [...prev, option];
-        onSearch(newOptions);
-        return newOptions;
-      });
+      } else {
+        // Handle other options as before
+        setSelectedOptions((prev) => {
+          if (
+            prev.some(
+              (selected) =>
+                selected.category === option.category &&
+                selected.value === option.value
+            )
+          ) {
+            return prev;
+          }
+          const newOptions = [...prev, option];
+          onSearch(newOptions);
+          return newOptions;
+        });
+      }
       setSearchTerm("");
       setShowSuggestions(false);
     },
@@ -118,88 +202,80 @@ const MultipleSearch: React.FC<MultipleSearchProps> = ({
     [onSearch]
   );
 
-const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const input = e.target.value;
-  setSearchTerm(input);
+  // Handle resetTrigger to clear input and selected options
+  useEffect(() => {
+    if (resetTrigger) {
+      setSearchTerm(""); 
+      setSelectedOptions([]); 
+      setSuggestions([]); 
+    }
+  }, [resetTrigger]);
 
-  // Handle multiple inputs separated by commas
-  if (input.includes(",")) {
-    const terms = input
-      .split(",")
-      .map((term) => term.trim())
-      .filter(Boolean);
-    const lastTerm = terms[terms.length - 1];
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    setSearchTerm(input);
 
-    // Process all complete terms except the last one
-    terms.slice(0, -1).forEach((term) => {
-      // Check for ZIP code
-      if (/^\d{5}$/.test(term)) {
-        handleSelect({
-          category: "zipCode",
-          value: term,
-          label: `ZIP: ${term}`,
-        });
-      }
-      // Check for age
-      else if (/^\d{1,2}$/.test(term)) {
-        handleSelect({
-          category: "age",
-          value: term,
-          label: `Age: ${term} years`,
-        });
-      }
-      // Check for breed match
-      else if (
-        breeds.some((breed) => breed.toLowerCase() === term.toLowerCase())
-      ) {
-        handleSelect({
-          category: "breed",
-          value: term,
-          label: term,
-        });
-      }
-      // Check for state match
-      else if (
-        US_STATES.some((state) => state.toLowerCase() === term.toLowerCase())
-      ) {
-        handleSelect({
-          category: "state",
-          value: term.toUpperCase(),
-          label: term.toUpperCase(),
-        });
-      }
-    });
+    // Handle multiple inputs separated by commas
+    if (input.includes(",")) {
+      const terms = input
+        .split(",")
+        .map((term) => term.trim())
+        .filter(Boolean);
+      const lastTerm = terms[terms.length - 1];
 
-    // Keep only the last term in the input
-    setSearchTerm(lastTerm);
-  }
+      // Process all complete terms except the last one
+      terms.slice(0, -1).forEach((term) => {
+        // Check for ZIP code
+        if (/^\d{5}$/.test(term)) {
+          handleSelect({
+            category: "zipCode",
+            value: term,
+            label: `ZIP: ${term}`,
+          });
+        }
+        // Check for age
+        else if (/^\d{1,2}$/.test(term)) {
+          handleSelect({
+            category: "age",
+            value: term,
+            label: `Age: ${term} years`,
+          });
+        }
+        // Check for breed match
+        else if (
+          breeds.some((breed) => breed.toLowerCase() === term.toLowerCase())
+        ) {
+          handleSelect({
+            category: "breed",
+            value: term,
+            label: term,
+          });
+        }
+        // Check for state match
+        else if (
+          US_STATES.some((state) => state.toLowerCase() === term.toLowerCase())
+        ) {
+          handleSelect({
+            category: "state",
+            value: term.toUpperCase(),
+            label: term.toUpperCase(),
+          });
+        }
+      });
 
-  setShowSuggestions(true);
-};
+      // Keep only the last term in the input
+      setSearchTerm(lastTerm);
+    }
 
-
-//   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-//     const input = e.target.value;
-//     setSearchTerm(input);
-//     setShowSuggestions(true);
-
-//     //Handle multiple inputs seperated by comma
-
-
-//     // If it's a complete ZIP code, automatically add it
-//     if (/^\d{5}$/.test(value)) {
-//       handleSelect({
-//         category: "zipCode",
-//         value: value,
-//         label: `ZIP: ${value}`,
-//       });
-//     }
-//   };
+    setShowSuggestions(true);
+  };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "breed":
         return "bg-blue-100 text-blue-800";
+      case "city":
+        return "bg-pink-100 text-pink-800";
       case "state":
         return "bg-green-100 text-green-800";
       case "zipCode":
@@ -227,12 +303,12 @@ const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               onClick={() => handleRemoveOption(option)}
               className="hover:text-red-500"
             >
-              X123
+              X
             </button>
           </span>
         ))}
         <div className="flex w-full">
-            <SearchIcon size={16} />
+          <SearchIcon size={16} />
           <input
             type="text"
             value={searchTerm}
@@ -250,7 +326,10 @@ const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             <button
               type="button"
               key={`${suggestion.category}-${suggestion.value}-${index}`}
-              onClick={() => handleSelect(suggestion)}
+              onClick={() => {
+                handleSelect(suggestion);
+                setShowSuggestions(false);
+              }}
               className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
             >
               <span

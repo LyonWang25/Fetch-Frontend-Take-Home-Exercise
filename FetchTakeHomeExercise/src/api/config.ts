@@ -1,4 +1,4 @@
-// src/api/config.ts
+//baseUrl for the API
 export const API_BASE_URL = 'https://frontend-take-home-service.fetch.com';
 
 // Common fetch configuration
@@ -9,7 +9,7 @@ export const defaultConfig = {
   },
 };
 
-// Interface definitions
+// Interface
 export interface LoginData {
   name: string;
   email: string;
