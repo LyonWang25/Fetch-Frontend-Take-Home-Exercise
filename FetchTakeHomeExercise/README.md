@@ -1,6 +1,8 @@
 Dog Finder Web Application
 This project is a web application built as a take-home assignment to showcase my ability to design, implement, and manage a user-friendly search interface. The application allows users to search for dogs based on various filters such as city, state, breed, age, and more.
 
+Demo: https://fetch-frontend-take-home-exercise.vercel.app/
+
 Features
 1. Quick Search:
 Search for dogs by city, state, ZIP code, breed, and age.
