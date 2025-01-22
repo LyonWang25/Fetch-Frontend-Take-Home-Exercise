@@ -1,50 +1,44 @@
-# React + TypeScript + Vite
+Dog Finder Web Application
+This project is a web application built as a take-home assignment to showcase my ability to design, implement, and manage a user-friendly search interface. The application allows users to search for dogs based on various filters such as city, state, breed, age, and more.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Features
+1. Quick Search:
+Search for dogs by city, state, ZIP code, breed, and age.
+Dynamic suggestions for city and state combinations to improve accuracy.
 
-Currently, two official plugins are available:
+2. Filter by Breed:
+Select one or multiple breeds to refine your search.
+Supports dynamic resetting of selected breeds.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+3. Location Search:
+Select U.S. states to filter dogs by geographic location.
+Automatically fetches ZIP codes for selected states.
 
-## Expanding the ESLint configuration
+4. Favorites Management:
+Add dogs to your favorites list for easy access.
+View or clear your favorite dogs.
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+6. Reset Filters:
+Reset all selected filters (city, state, breed, etc.) to start a fresh search.
 
-- Configure the top-level `parserOptions` property like this:
+7. Pagination:
+Fetch and display results across multiple pages.
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+Example Usage Workflow
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+Quick Search:
+Type "Boston" in the search bar.
+Select "Boston, MA" from the suggestions.
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+Filter by Breed:
+Select one or multiple breeds from the dropdown (e.g., "Labrador").
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+Location Search:
+Select "California" from the state filter to narrow results geographically.
+
+View Favorites:
+Click on the heart icon to view your list of favorite dogs.
+
+Reset Filters:
+Click "Reset Filters" to clear all selections and start over.
+
